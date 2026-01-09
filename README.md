@@ -22,16 +22,17 @@ En la primera parte, hemos implementado una solución estructurada bajo el patr�
 
 1.  **Patrón MVC (Model-View-Controller)**:
 
-    - **Controlador (`Controller`)**: Orquestador principal. Gestiona el flujo de la aplicación: solicita la lectura de datos, invoca al solver y ordena a la vista mostrar los resultados.
-    - **Vista (`ConsoleView`)**: Responsable única de la interacción con el usuario (salida por consola). No contiene lógica de negocio.
-    - **Modelo**: Compuesto por `OperationProcessor` (lógica) y `FileInstructionReader` (acceso a datos).
+    - **Vista (`Main`)**: En este diseño simplificado, la clase `Main` actúa como la Vista. Es responsable de iniciar la aplicación, inyectar dependencias y mostrar el resultado final por consola.
+    - **Controlador (`Controller`)**: Recibe las dependencias y coordina el flujo de ejecución (lectura -> resolución -> retorno de resultado).
+    - **Modelo**: Compuesto por `OperationProcessor`, `FileInstructionReader` y las estructuras de datos.
 
-2.  **Factory Method Pattern**:
+2.  **Inversión de Dependencias (ISP/DIP)**:
 
-    - **`SolverFactory`**: Encapsula la lógica de creación del `Solver`. El Controlador no conoce qué implementación concreta de `Solver` está usando, solo le pide uno a la factoría. Esto facilita la extensión futura (ej. devolver distintos solvers según el input).
+    - **`InstructionReader` Interface**: Se ha desacoplado la lectura de datos de la implementación concreta de archivos. El `Controller` solo conoce esta interfaz.
+    - **`Solver` Interface**: Define el contrato para resolver el problema, permitiendo intercambiar implementaciones.
 
-3.  **Inversión de Dependencias (DIP) y Abstracción**:
-    - **`Solver` Interface**: Definimos un contrato para los solucionadores. `OperationProcessor` implementa esta interfaz. Esto permite que el sistema dependa de abstracciones y no de implementaciones concretas.
+3.  **Factory Method Pattern**:
+    - **`SolverFactory`**: Centraliza la creación del objeto `Solver` adecuado.
 
 ### Diagrama de Clases (Parte A - MVC)
 
@@ -41,13 +42,16 @@ classDiagram
         +main()
     }
     class Controller {
-        -ConsoleView view
-        -FileInstructionReader reader
-        +run()
+        -InstructionReader reader
+        +run() long
     }
-    class ConsoleView {
-        +showResult(long)
-        +showError(String)
+    class InstructionReader {
+        <<interface>>
+        +readAllData() FileOutput
+    }
+    class FileInstructionReader {
+        -filePath: String
+        +readAllData() FileOutput
     }
     class SolverFactory {
         +createSolver(FileOutput): Solver
@@ -60,33 +64,30 @@ classDiagram
         -FileOutput data
         +solve() long
     }
-    class FileInstructionReader {
-        -filePath: String
-        +readAllData() FileOutput
-    }
     class FileOutput {
         <<record>>
         +List dataLine1...
     }
 
-    Main ..> Controller : crea
-    Main ..> ConsoleView : inyecta
-    Main ..> FileInstructionReader : inyecta
+    Main ..> Controller : crea y usa
+    Main ..> FileInstructionReader : crea
 
-    Controller --> ConsoleView : actualiza
-    Controller --> FileInstructionReader : usa
+    Controller --> InstructionReader : usa
+    FileInstructionReader ..|> InstructionReader : implementa
+    FileInstructionReader ..> FileOutput : produce
+
     Controller ..> SolverFactory : usa
+    SolverFactory ..> Solver : crea
+    SolverFactory ..> OperationProcessor : instancia
     Controller --> Solver : usa
 
-    SolverFactory ..> OperationProcessor : crea
     OperationProcessor ..|> Solver : implementa
     OperationProcessor --> FileOutput : consume
-    FileInstructionReader ..> FileOutput : produce
 ```
 
 ---
 
-## Parte B: Solución Avanzada (Refactorización y Modelado de Dominio)
+## Parte B: Solución Avanzada (Modelado de Dominio)
 
 La segunda parte introduce una complejidad mayor en el parsing (columnas variables, estructura de grid). Para manejar esto, la arquitectura evoluciona hacia un diseño más orientado a objetos y al dominio.
 
@@ -116,13 +117,15 @@ classDiagram
     class Main {
         +main()
     }
+    class FileInstructionReader {
+        +readAllData() FileOutput
+    }
     class CephalopodMathSolver {
         +solve() long
     }
     class Grid {
         -FileOutput rawData
         +getChar(row, col) String
-        +getWidth() int
     }
     class ProblemScanner {
         -Grid grid
@@ -146,6 +149,7 @@ classDiagram
         +apply(long, long) long
     }
 
+    Main --> FileInstructionReader : usa
     Main --> CephalopodMathSolver : usa
     CephalopodMathSolver --> Grid : crea
     CephalopodMathSolver --> ProblemScanner : usa
