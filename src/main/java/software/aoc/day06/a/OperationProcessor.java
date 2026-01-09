@@ -2,9 +2,10 @@ package software.aoc.day06.a;
 
 import java.util.List;
 
-public record OperationProcessor(FileOutput data) {
+public record OperationProcessor(FileOutput data) implements Solver {
 
-    public long calculateResult() {
+    @Override
+    public long solve() {
 
         List<Integer> line1 = data.dataLine1();
         List<Integer> line2 = data.dataLine2();
