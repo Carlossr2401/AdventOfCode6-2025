@@ -14,36 +14,44 @@ El proyecto se divide en dos partes (`a` y `b`), donde la parte `b` representa u
 
 ---
 
-## Parte A: Solución con Arquitectura MVC
+## Parte A: Solución con Factories y Main Orchestrator
 
-En la primera parte, hemos implementado una solución estructurada bajo el patrón **Modelo-Vista-Controlador (MVC)**, garantizando una estricta separación de responsabilidades y un flujo de control claro.
+Hemos refactorizado la solución para eliminar el Controlador y utilizar un enfoque más directo donde el `Main` orquesta el flujo utilizando Factorías, siguiendo el patrón de inyección de dependencias manual.
 
 ### Decisiones Técnicas y Patrones
 
-1.  **Patrón MVC (Model-View-Controller)**:
+1.  **Orquestación en Main**:
 
-    - **Vista (`Main`)**: En este diseño simplificado, la clase `Main` actúa como la Vista. Es responsable de iniciar la aplicación, inyectar dependencias y mostrar el resultado final por consola.
-    - **Controlador (`Controller`)**: Recibe las dependencias y coordina el flujo de ejecución (lectura -> resolución -> retorno de resultado).
-    - **Modelo**: Compuesto por `OperationProcessor`, `FileInstructionReader` y las estructuras de datos.
+    - `Main` es el punto de entrada y coordina el alto nivel, delegando la creación de componentes a las factorías.
 
-2.  **Inversión de Dependencias (ISP/DIP)**:
+2.  **Factory Pattern (Doble Nivel)**:
 
-    - **`InstructionReader` Interface**: Se ha desacoplado la lectura de datos de la implementación concreta de archivos. El `Controller` solo conoce esta interfaz.
-    - **`Solver` Interface**: Define el contrato para resolver el problema, permitiendo intercambiar implementaciones.
+    - **`SolverFactory`**: Crea la instancia de `Solver`. Encapsula el conocimiento de "qué solver y qué lector necesito".
+    - **`ReaderFactory`**: Especializada en crear el `InstructionReader`. `SolverFactory` la utiliza.
 
-3.  **Factory Method Pattern**:
-    - **`SolverFactory`**: Centraliza la creación del objeto `Solver` adecuado.
+3.  **Solver como "Smart Worker"**:
+    - A diferencia de la versión anterior, `OperationProcessor` (nuestro Solver) ahora recibe un `InstructionReader` en lugar de datos crudos. Es responsable de solicitar la lectura cuando sea necesario (Lazy Loading o bajo demanda), encapsulando mejor el ciclo completo de resolución.
 
-### Diagrama de Clases (Parte A - MVC)
+### Diagrama de Clases (Parte A)
 
 ```mermaid
 classDiagram
     class Main {
         +main()
     }
-    class Controller {
+    class SolverFactory {
+        +createSolver(filePath) Solver
+    }
+    class ReaderFactory {
+        +createFileReader(filePath) InstructionReader
+    }
+    class Solver {
+        <<interface>>
+        +solve() long
+    }
+    class OperationProcessor {
         -InstructionReader reader
-        +run() long
+        +solve() long
     }
     class InstructionReader {
         <<interface>>
@@ -53,62 +61,31 @@ classDiagram
         -filePath: String
         +readAllData() FileOutput
     }
-    class SolverFactory {
-        +createSolver(FileOutput): Solver
-    }
-    class Solver {
-        <<interface>>
-        +solve() long
-    }
-    class OperationProcessor {
-        -FileOutput data
-        +solve() long
-    }
     class FileOutput {
         <<record>>
         +List dataLine1...
     }
 
-    Main ..> Controller : crea y usa
-    Main ..> FileInstructionReader : crea
+    Main --> SolverFactory : usa
+    SolverFactory --> OperationProcessor : crea
+    SolverFactory ..> ReaderFactory : usa
 
-    Controller --> InstructionReader : usa
-    FileInstructionReader ..|> InstructionReader : implementa
-    FileInstructionReader ..> FileOutput : produce
+    ReaderFactory ..> FileInstructionReader : crea
 
-    Controller ..> SolverFactory : usa
-    SolverFactory ..> Solver : crea
-    SolverFactory ..> OperationProcessor : instancia
-    Controller --> Solver : usa
-
+    Main ..> Solver : usa (interface)
     OperationProcessor ..|> Solver : implementa
-    OperationProcessor --> FileOutput : consume
+    OperationProcessor --> InstructionReader : tiene referencia
+    FileInstructionReader ..|> InstructionReader : implementa
+
+    InstructionReader ..> FileOutput : retorna
+    OperationProcessor ..> FileOutput : procesa
 ```
 
 ---
 
-## Parte B: Solución Avanzada (Modelado de Dominio)
+## Parte B: Solución Avanzada con Factories
 
-La segunda parte introduce una complejidad mayor en el parsing (columnas variables, estructura de grid). Para manejar esto, la arquitectura evoluciona hacia un diseño más orientado a objetos y al dominio.
-
-### Decisiones Técnicas y Patrones
-
-1.  **Grid Abstraction (Gestión de Estructuras de Datos)**:
-
-    - Se introduce `Grid` para abstraer el acceso a los datos crudos. Esto permite consultar coordenadas `(x, y)` sin preocuparse por los límites de las listas subyacentes, encapsulando la manejo de errores de índice.
-
-2.  **Strategy Pattern (vía Enum)**:
-
-    - La clase `Operator` es un Enum que encapsula la lógica de cada operación aritmética (`+`, `*`). Esto cumple con el **Open/Closed Principle (OCP)**: si se añaden nuevos operadores en el futuro (ej. `-` o `/`), solo se modifica el Enum, sin tocar la lógica de resolución de problemas.
-
-3.  **Separation of Concerns (Parsing vs Solving)**:
-
-    - **`ProblemScanner`**: Su única responsabilidad es _identificar_ problemas dentro del `Grid`. No los resuelve. Implementa una lógica de escaneo visual (de derecha a izquierda) similar a como lo haría un humano.
-    - **`NumberParser`**: Extrae valores numéricos de columnas, aisladando la lógica de parsing de texto sucia.
-    - **`Problem`**: Representa un problema matemático válido y autocontenido. Sabe cómo resolverse a sí mismo (Information Expert), delegando la operación matemática al `Operator`.
-
-4.  **Gestión de Flujos de Datos**:
-    - El flujo es `Raw File -> Grid -> ProblemScanner -> List<Problem> -> Result`. Cada transformación refina los datos, pasando de texto sin estructura a objetos de dominio rico.
+Hemos extendido el patrón de Factorías a la Parte B para mantener la consistencia arquitectónica, adaptándolo al dominio más complejo de esta sección.
 
 ### Diagrama de Clases (Parte B)
 
@@ -117,44 +94,54 @@ classDiagram
     class Main {
         +main()
     }
+    class SolverFactory {
+        +createSolver(filePath) Solver
+    }
+    class ReaderFactory {
+        +createFileReader(filePath) InstructionReader
+    }
+    class Solver {
+        <<interface>>
+        +solve() long
+    }
+    class CephalopodMathSolver {
+        -InstructionReader reader
+        +solve() long
+    }
+    class InstructionReader {
+        <<interface>>
+        +readAllData() FileOutput
+    }
     class FileInstructionReader {
         +readAllData() FileOutput
     }
-    class CephalopodMathSolver {
-        +solve() long
-    }
+
     class Grid {
         -FileOutput rawData
         +getChar(row, col) String
     }
     class ProblemScanner {
         -Grid grid
-        -NumberParser numberParser
         +scan() List~Problem~
     }
-    class NumberParser {
-        -Grid grid
-        +extractNumber(col) long
-    }
     class Problem {
-        <<record>>
         -List~Long~ numbers
         -Operator operator
         +solve() long
     }
-    class Operator {
-        <<enumeration>>
-        PLUS
-        MULTIPLY
-        +apply(long, long) long
-    }
 
-    Main --> FileInstructionReader : usa
-    Main --> CephalopodMathSolver : usa
+    Main --> SolverFactory : usa
+    SolverFactory --> CephalopodMathSolver : crea
+    SolverFactory ..> ReaderFactory : usa
+    ReaderFactory ..> FileInstructionReader : crea
+
+    Main ..> Solver : usa
+    CephalopodMathSolver ..|> Solver : implementa
+    CephalopodMathSolver --> InstructionReader : tiene referencia
+    FileInstructionReader ..|> InstructionReader : implementa
+
     CephalopodMathSolver --> Grid : crea
     CephalopodMathSolver --> ProblemScanner : usa
     ProblemScanner --> Grid : consulta
-    ProblemScanner --> NumberParser : usa
-    ProblemScanner ..> Problem : crea
-    Problem --> Operator : usa
+    ProblemScanner ..> Problem : produce
 ```
