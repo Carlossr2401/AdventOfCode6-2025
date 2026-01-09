@@ -36,36 +36,46 @@ Hemos refactorizado la solución para eliminar el Controlador y utilizar un enfo
 
 ```mermaid
 classDiagram
-    class Main {
-        +main()
-    }
-    class SolverFactory {
-        +createSolver(filePath) Solver
-    }
-    class ReaderFactory {
-        +createFileReader(filePath) InstructionReader
-    }
-    class Solver {
-        <<interface>>
-        +solve() long
-    }
-    class OperationProcessor {
-        -InstructionReader reader
-        +solve() long
-    }
+    %% Agrupación por capas lógicas
+    subgraph Infrastructure [Capa de Infraestructura]
+        direction TB
+        class Main {
+            +main()
+        }
+        class SolverFactory {
+            +createSolver(filePath) Solver
+        }
+        class ReaderFactory {
+            +createFileReader(filePath) InstructionReader
+        }
+        class FileInstructionReader {
+            -filePath: String
+            +readAllData() FileOutput
+        }
+    end
+
+    subgraph BusinessLogic [Lógica de Negocio y Solución]
+        direction TB
+        class Solver {
+            <<interface>>
+            +solve() long
+        }
+        class OperationProcessor {
+            -InstructionReader reader
+            +solve() long
+        }
+        class FileOutput {
+            <<record>>
+            +List dataLine1...
+        }
+    end
+
     class InstructionReader {
         <<interface>>
         +readAllData() FileOutput
     }
-    class FileInstructionReader {
-        -filePath: String
-        +readAllData() FileOutput
-    }
-    class FileOutput {
-        <<record>>
-        +List dataLine1...
-    }
 
+    %% Relaciones
     Main --> SolverFactory : usa
     SolverFactory --> OperationProcessor : crea
     SolverFactory ..> ReaderFactory : usa
@@ -78,7 +88,7 @@ classDiagram
     FileInstructionReader ..|> InstructionReader : implementa
 
     InstructionReader ..> FileOutput : retorna
-    OperationProcessor ..> FileOutput : procesa
+    OperationProcessor ..> FileOutput : procesa y consume
 ```
 
 ---
@@ -91,43 +101,61 @@ Hemos extendido el patrón de Factorías a la Parte B para mantener la consisten
 
 ```mermaid
 classDiagram
-    class Main {
-        +main()
-    }
-    class SolverFactory {
-        +createSolver(filePath) Solver
-    }
-    class ReaderFactory {
-        +createFileReader(filePath) InstructionReader
-    }
-    class Solver {
-        <<interface>>
-        +solve() long
-    }
-    class CephalopodMathSolver {
-        -InstructionReader reader
-        +solve() long
-    }
+    %% Agrupación por capas
+    subgraph Infrastructure [Capa de Infraestructura]
+        direction TB
+        class Main {
+            +main()
+        }
+        class SolverFactory {
+            +createSolver(filePath) Solver
+        }
+        class ReaderFactory {
+            +createFileReader(filePath) InstructionReader
+        }
+        class FileInstructionReader {
+            +readAllData() FileOutput
+        }
+    end
+
+    subgraph SolverLayer [Capa de Solución]
+        direction TB
+        class Solver {
+            <<interface>>
+            +solve() long
+        }
+        class CephalopodMathSolver {
+            -InstructionReader reader
+            +solve() long
+        }
+    end
+
+    subgraph DomainLogic [Lógica de Negocio y Dominio]
+        direction TB
+        class Grid {
+            -FileOutput rawData
+            +getChar(row, col) String
+        }
+        class ProblemScanner {
+            -Grid grid
+            +scan() List~Problem~
+        }
+        class Problem {
+            -List~Long~ numbers
+            -Operator operator
+            +solve() long
+        }
+        class Operator {
+            <<enumeration>>
+            PLUS
+            MULTIPLY
+            +apply(long, long) long
+        }
+    end
+
     class InstructionReader {
         <<interface>>
         +readAllData() FileOutput
-    }
-    class FileInstructionReader {
-        +readAllData() FileOutput
-    }
-
-    class Grid {
-        -FileOutput rawData
-        +getChar(row, col) String
-    }
-    class ProblemScanner {
-        -Grid grid
-        +scan() List~Problem~
-    }
-    class Problem {
-        -List~Long~ numbers
-        -Operator operator
-        +solve() long
     }
 
     Main --> SolverFactory : usa
@@ -140,8 +168,10 @@ classDiagram
     CephalopodMathSolver --> InstructionReader : tiene referencia
     FileInstructionReader ..|> InstructionReader : implementa
 
-    CephalopodMathSolver --> Grid : crea
+    %% Relaciones de Dominio
+    CephalopodMathSolver --> Grid : construye
     CephalopodMathSolver --> ProblemScanner : usa
-    ProblemScanner --> Grid : consulta
+    ProblemScanner --> Grid : analiza
     ProblemScanner ..> Problem : produce
+    Problem --> Operator : ejecuta lógica
 ```
