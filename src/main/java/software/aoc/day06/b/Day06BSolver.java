@@ -3,18 +3,24 @@ package software.aoc.day06.b;
 import java.io.IOException;
 import java.util.List;
 
-public class CephalopodMathSolver implements Solver {
+import software.aoc.day06.Grid;
+import software.aoc.day06.InstructionReader;
+import software.aoc.day06.Problem;
+import software.aoc.day06.ProblemScanner;
+import software.aoc.day06.Solver;
+
+public class Day06BSolver implements Solver {
     private final InstructionReader reader;
 
-    public CephalopodMathSolver(InstructionReader reader) {
+    public Day06BSolver(InstructionReader reader) {
         this.reader = reader;
     }
 
     @Override
     public long solve() {
         try {
-            FileOutput fileOutput = reader.readAllData();
-            Grid grid = new Grid(fileOutput);
+            List<String> lines = reader.readAllLines();
+            Grid grid = new Grid(lines);
             ProblemScanner scanner = new ProblemScanner(grid);
             List<Problem> problems = scanner.scan();
 

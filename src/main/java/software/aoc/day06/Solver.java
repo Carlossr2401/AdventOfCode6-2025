@@ -1,4 +1,4 @@
-package software.aoc.day06.a;
+package software.aoc.day06;
 
 public interface Solver {
     long solve();

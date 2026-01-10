@@ -1,5 +1,4 @@
-package software.aoc.day06.b;
-
+package software.aoc.day06;
 
 public class NumberParser {
     private final Grid grid;
@@ -10,7 +9,8 @@ public class NumberParser {
 
     public long extractNumber(int col) {
         StringBuilder sb = new StringBuilder();
-        // Rows 0 to 3 are potential digits
+        // Rows 0 to 3 are potential digits (as per original logic assumption)
+        // Wait, original logic hardcoded rows 0-3.
         for (int row = 0; row < 4; row++) {
              String c = grid.getChar(row, col);
              if (c != null && !c.trim().isEmpty() && Character.isDigit(c.trim().charAt(0))) {

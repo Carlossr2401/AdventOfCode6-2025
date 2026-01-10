@@ -1,177 +1,130 @@
 # Advent of Code 2025 - Día 6: Cephalopod Math
 
-Este repositorio contiene la solución para el Día 6 del Advent of Code 2025. El enfoque principal ha sido aplicar principios de ingeniería de software robustos (SOLID, Clean Code) y patrones de diseño adecuados para garantizar un código mantenible, legible y extensible.
+Este proyecto contiene la solución para el **Día 6** del Advent of Code 2025: _Cephalopod Math_. El desafío se centra en el análisis de operaciones matemáticas presentadas en diferentes formatos (líneas de texto y cuadrículas), requiriendo un diseño flexible capaz de interpretar y ejecutar instrucciones variables.
 
-## Principios de Diseño y Arquitectura
+## Diseño y Arquitectura
 
-El proyecto se divide en dos partes (`a` y `b`), donde la parte `b` representa una evolución en la complejidad y robustez de la solución.
+En este proyecto se aplican estrictamente los principios SOLID y Clean Code, junto con patrones de diseño estratégicos para garantizar un código mantenible, extensible y testeable. Se ha optado por una arquitectura simplificada que centraliza la lógica del día en un único paquete cohesivo.
 
-### Principios Generales Aplicados
+### 1. Principios SOLID
 
-- **Single Responsibility Principle (SRP)**: Cada clase tiene una única responsabilidad. Por ejemplo, `FileInstructionReader` se encarga exclusivamente de la entrada de datos, mientras que `OperationProcessor` (en la parte A) y `CephalopodMathSolver` (en la parte B) manejan la lógica de negocio.
-- **Clean Code**: Se ha priorizado la legibilidad mediante nombres descriptivos de métodos y variables, evitando "números mágicos" y encapsulando lógica compleja en métodos privados auxiliares.
-- **Inmutabilidad**: Uso extensivo de `record` (como `FileOutput`, `Problem`) para garantizar que los datos transferidos no se modifiquen inesperadamente, favoreciendo la seguridad en hilos (aunque no se use concurrencia aquí) y la predictibilidad.
+- **Single Responsibility Principle (SRP)**:
+  - `SolverFactory`: Responsable únicamente de la creación de los objetos Solver adecuados según la parte del problema ("A" o "B").
+  - `FileInstructionReader`: Responsable de la lectura de bajo nivel del archivo de entrada.
+  - `Day06ASolver`: Contiene la lógica específica para resolver ecuaciones lineales simples (Parte A).
+  - `Day06BSolver`: Orquesta la resolución de problemas complejos basados en cuadrículas (Parte B), delegando el análisis al `ProblemScanner`.
+  - `Grid`: Estructura de datos inmutable que representa la cuadrícula de caracteres.
+  - `ProblemScanner`: Servicio de dominio encargado de identificar ("escanear") problemas matemáticos dentro de la cuadrícula.
+- **Open/Closed Principle (OCP)**:
+  - El sistema es extensible para nuevas partes (ej. Parte C) implementando la interfaz `Solver` sin modificar el código existente en `Main` o en los otros solvers.
+- **Liskov Substitution Principle (LSP)**:
+  - `Day06ASolver` y `Day06BSolver` implementan la interfaz `Solver`, permitiendo que `Main` los utilice indistintamente.
+- **Interface Segregation Principle (ISP)**:
+  - `InstructionReader` define un contrato mínimo (`readAllLines`), evitando dependencias innecesarias de métodos de lectura complejos no utilizados por todos los clientes.
+- **Dependency Inversion Principle (DIP)**:
+  - Los módulos de alto nivel (`Main`, Solvers) dependen de abstracciones (`Solver`, `InstructionReader`), desacoplándose de los detalles de implementación como el sistema de archivos.
 
----
+### 2. Patrones de Diseño
 
-## Parte A: Solución con Factories y Main Orchestrator
+Se han implementado patrones estándar de la industria:
 
-Hemos refactorizado la solución para eliminar el Controlador y utilizar un enfoque más directo donde el `Main` orquesta el flujo utilizando Factorías, siguiendo el patrón de inyección de dependencias manual.
+- **Strategy Pattern (Estrategia)**:
+  - La interfaz `Solver` define la estrategia común. `Day06ASolver` y `Day06BSolver` son implementaciones concretas intercambiables que encapsulan algoritmos distintos.
+- **Factory Pattern (Fábrica)**:
+  - `SolverFactory`: Encapsula la lógica de creación de los solvers, inyectando las dependencias necesarias.
+  - `ReaderFactory`: Centraliza la creación del lector de instrucciones.
+- **Dependency Injection**:
+  - `InstructionReader` se inyecta en los constructores de los Solvers. `Grid` se inyecta en `ProblemScanner`. Esto promueve un acoplamiento débil y facilita el testing.
 
-### Decisiones Técnicas y Patrones
+### 3. Clean Code
 
-1.  **Orquestación en Main**:
+- **Meaningful Names**: Nombres de clases y métodos que revelan intención (`solve`, `extractNumber`, `scan`).
+- **Separation of Concerns**: Distinción clara entre infraestructura (Input/Output), orquestación (Solvers) y lógica de dominio pura (`Operator`, `Problem`).
+- **Records**: Uso de Java Records (`Problem`) para objetos de transferencia de datos inmutables y concisos.
 
-    - `Main` es el punto de entrada y coordina el alto nivel, delegando la creación de componentes a las factorías.
-
-2.  **Factory Pattern (Doble Nivel)**:
-
-    - **`SolverFactory`**: Crea la instancia de `Solver`. Encapsula el conocimiento de "qué solver y qué lector necesito".
-    - **`ReaderFactory`**: Especializada en crear el `InstructionReader`. `SolverFactory` la utiliza.
-
-3.  **Solver como "Smart Worker"**:
-    - A diferencia de la versión anterior, `OperationProcessor` (nuestro Solver) ahora recibe un `InstructionReader` en lugar de datos crudos. Es responsable de solicitar la lectura cuando sea necesario (Lazy Loading o bajo demanda), encapsulando mejor el ciclo completo de resolución.
-
-### Diagrama de Clases (Parte A)
+### 4. Diagrama de Arquitectura
 
 ```mermaid
 classDiagram
-    %% Agrupación por capas lógicas
-    subgraph Infrastructure [Capa de Infraestructura]
-        direction TB
-        class Main {
-            +main()
-        }
-        class SolverFactory {
-            +createSolver(filePath) Solver
-        }
-        class ReaderFactory {
-            +createFileReader(filePath) InstructionReader
-        }
-        class FileInstructionReader {
-            -filePath: String
-            +readAllData() FileOutput
-        }
-    end
+    class Main {
+        +main(args: String[]) void$
+    }
 
-    subgraph BusinessLogic [Lógica de Negocio y Solución]
-        direction TB
-        class Solver {
-            <<interface>>
-            +solve() long
-        }
-        class OperationProcessor {
-            -InstructionReader reader
-            +solve() long
-        }
-        class FileOutput {
-            <<record>>
-            +List dataLine1...
-        }
-    end
+    class SolverFactory {
+        +createSolver(part: Part, filePath: String) Solver$
+    }
+
+    class Solver {
+        <<Interface>>
+        +solve() long
+    }
+
+    class Day06ASolver {
+        +Day06ASolver(reader: InstructionReader)
+        +solve() long
+    }
+
+    class Day06BSolver {
+        +Day06BSolver(reader: InstructionReader)
+        +solve() long
+    }
 
     class InstructionReader {
-        <<interface>>
-        +readAllData() FileOutput
+        <<Interface>>
+        +readAllLines() List~String~
+    }
+
+    class FileInstructionReader {
+        +readAllLines() List~String~
+    }
+
+    class Grid {
+        +getChar(row: int, col: int) String
+        +getWidth() int
+    }
+
+    class ProblemScanner {
+        +scan() List~Problem~
+        -createProblem(cols: List~Integer~) Problem
+    }
+
+    class Problem {
+        <<Record>>
+        +solve() long
+    }
+
+    class Operator {
+        <<Enumeration>>
+        PLUS
+        MULTIPLY
+        +apply(a: long, b: long) long
     }
 
     %% Relaciones
-    Main --> SolverFactory : usa
-    SolverFactory --> OperationProcessor : crea
+    Main ..> SolverFactory : usa
+    SolverFactory ..> Solver : crea
+    SolverFactory ..> Day06ASolver : instancia
+    SolverFactory ..> Day06BSolver : instancia
     SolverFactory ..> ReaderFactory : usa
 
-    ReaderFactory ..> FileInstructionReader : crea
+    Day06ASolver ..|> Solver : implementa
+    Day06BSolver ..|> Solver : implementa
 
-    Main ..> Solver : usa (interface)
-    OperationProcessor ..|> Solver : implementa
-    OperationProcessor --> InstructionReader : tiene referencia
-    FileInstructionReader ..|> InstructionReader : implementa
+    Day06ASolver --> InstructionReader : usa
+    Day06BSolver --> InstructionReader : usa
+    InstructionReader <|.. FileInstructionReader : implementa
 
-    InstructionReader ..> FileOutput : retorna
-    OperationProcessor ..> FileOutput : procesa y consume
-```
-
----
-
-## Parte B: Solución Avanzada con Factories
-
-Hemos extendido el patrón de Factorías a la Parte B para mantener la consistencia arquitectónica, adaptándolo al dominio más complejo de esta sección.
-
-### Diagrama de Clases (Parte B)
-
-```mermaid
-classDiagram
-    %% Agrupación por capas
-    subgraph Infrastructure [Capa de Infraestructura]
-        direction TB
-        class Main {
-            +main()
-        }
-        class SolverFactory {
-            +createSolver(filePath) Solver
-        }
-        class ReaderFactory {
-            +createFileReader(filePath) InstructionReader
-        }
-        class FileInstructionReader {
-            +readAllData() FileOutput
-        }
-    end
-
-    subgraph SolverLayer [Capa de Solución]
-        direction TB
-        class Solver {
-            <<interface>>
-            +solve() long
-        }
-        class CephalopodMathSolver {
-            -InstructionReader reader
-            +solve() long
-        }
-    end
-
-    subgraph DomainLogic [Lógica de Negocio y Dominio]
-        direction TB
-        class Grid {
-            -FileOutput rawData
-            +getChar(row, col) String
-        }
-        class ProblemScanner {
-            -Grid grid
-            +scan() List~Problem~
-        }
-        class Problem {
-            -List~Long~ numbers
-            -Operator operator
-            +solve() long
-        }
-        class Operator {
-            <<enumeration>>
-            PLUS
-            MULTIPLY
-            +apply(long, long) long
-        }
-    end
-
-    class InstructionReader {
-        <<interface>>
-        +readAllData() FileOutput
-    }
-
-    Main --> SolverFactory : usa
-    SolverFactory --> CephalopodMathSolver : crea
-    SolverFactory ..> ReaderFactory : usa
-    ReaderFactory ..> FileInstructionReader : crea
-
-    Main ..> Solver : usa
-    CephalopodMathSolver ..|> Solver : implementa
-    CephalopodMathSolver --> InstructionReader : tiene referencia
-    FileInstructionReader ..|> InstructionReader : implementa
-
-    %% Relaciones de Dominio
-    CephalopodMathSolver --> Grid : construye
-    CephalopodMathSolver --> ProblemScanner : usa
-    ProblemScanner --> Grid : analiza
+    Day06BSolver ..> Grid : construye
+    Day06BSolver --> ProblemScanner : usa
+    ProblemScanner --> Grid : lee
     ProblemScanner ..> Problem : produce
-    Problem --> Operator : ejecuta lógica
+    Problem --> Operator : usa
 ```
+
+### 5. Estructura del Proyecto
+
+Todos los componentes principales se encuentran bajo el paquete `software.aoc.day06`, promoviendo la cohesión y simplificando la navegación:
+
+- **Interfaces y Factorías**: `Solver`, `InstructionReader`, `SolverFactory`, `ReaderFactory`.
+- **Implementaciones**: `Day06ASolver`, `Day06BSolver`, `FileInstructionReader`.
+- **Dominio**: `Grid`, `ProblemScanner`, `Problem`, `Operator`, `NumberParser`.

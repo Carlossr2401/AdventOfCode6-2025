@@ -1,4 +1,4 @@
-package software.aoc.day06.b;
+package software.aoc.day06;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +38,9 @@ public class ProblemScanner {
     private boolean isColumnEmpty(int col) {
         if (col < 0) return true;
         
-        for (int row = 0; row < 5; row++) { // Check all rows including operator row
+        // Assuming 5 rows total as per Day06 logic (0-3 numbers, 4 operator)
+        int height = grid.getHeight();
+        for (int row = 0; row < height; row++) { 
             String c = grid.getChar(row, col);
             if (!c.trim().isEmpty()) {
                 return false;
@@ -65,17 +67,12 @@ public class ProblemScanner {
                  try {
                      operator = Operator.fromSymbol(potentialOp);
                  } catch (IllegalArgumentException e) {
-                     // Ignore if not a valid operator (maybe just noise or part of a number? No, row 4 is operator row)
+                     // Ignore if not a valid operator
                  }
             }
         }
         
         if (operator == null) {
-            // Default or error?
-            // "Symbol at the bottom of the problem is still the operator to use."
-            // If missing, maybe throw or assume something?
-            // For robust code, let's log or assume '+'. But strictly, it should be there.
-            // Let's assume valid input for AoC.
             throw new IllegalStateException("No operator found for problem at cols: " + cols);
         }
         

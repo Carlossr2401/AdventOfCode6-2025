@@ -1,19 +1,20 @@
-package software.aoc.day06.b;
+package software.aoc.day06;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Grid {
     private final List<List<String>> rows;
     private final int width;
 
-    public Grid(FileOutput fileOutput) {
-        this.rows = new ArrayList<>();
-        rows.add(fileOutput.dataLine1());
-        rows.add(fileOutput.dataLine2());
-        rows.add(fileOutput.dataLine3());
-        rows.add(fileOutput.dataLine4());
-        rows.add(fileOutput.dataLine5());
+    // Constructor adapted to take List<String> (lines) directly
+    public Grid(List<String> fileLines) {
+        this.rows = fileLines.stream()
+                .map(line -> line.chars()
+                        .mapToObj(c -> String.valueOf((char) c))
+                        .collect(Collectors.toList()))
+                .collect(Collectors.toList());
 
         this.width = rows.stream().mapToInt(List::size).max().orElse(0);
     }
@@ -30,5 +31,9 @@ public class Grid {
 
     public int getWidth() {
         return width;
+    }
+
+    public int getHeight() {
+        return rows.size();
     }
 }

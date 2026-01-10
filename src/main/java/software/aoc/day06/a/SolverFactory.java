@@ -1,9 +1,0 @@
-package software.aoc.day06.a;
-
-public class SolverFactory {
-
-    public static Solver createSolver(String filePath) {
-        InstructionReader reader = ReaderFactory.createFileReader(filePath);
-        return new OperationProcessor(reader);
-    }
-}
