@@ -3,10 +3,10 @@ package software.aoc.day06.b;
 import java.io.IOException;
 import java.util.List;
 
-import software.aoc.day06.Grid;
+
 import software.aoc.day06.InstructionReader;
-import software.aoc.day06.Problem;
-import software.aoc.day06.ProblemScanner;
+
+
 import software.aoc.day06.Solver;
 
 public class Day06BSolver implements Solver {

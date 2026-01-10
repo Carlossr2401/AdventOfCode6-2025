@@ -1,6 +1,6 @@
-package software.aoc.day06;
+package software.aoc.day06.b;
 
-import java.util.Collections;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
